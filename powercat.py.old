@@ -1,0 +1,172 @@
+def promptInt(msg, r=None, ):
+    a = ''
+    while a == '':
+        try:
+            a = int(input(msg))
+            if a not in r:
+                a = ''
+        except ValueError:
+            a = ''
+        except TypeError:
+            pass
+    return a
+
+
+def promptFromList(lst):
+    if len(lst) == 1:
+        f = 0
+    else:
+        print("Options:")
+
+        for i in range(len(lst)):
+            print(f"{i}: {lst[i]}")
+
+        f = promptInt(f"Please Select(0-{len(lst)-1}):",
+                      range(len(lst)))
+
+    return f
+
+
+def calcESlab(units, eSlab):
+    cost = 0
+    counter = units
+    for i in sorted(eSlab):
+        if i == 999 or i > units:
+            cost += eSlab[i]*units
+            counter = 0
+        else:
+            cost += eSlab[i]*i
+            counter -= i
+    return cost
+
+
+class BasicCat:
+    def __init__(self, descriptor, energySlabs, fixedSlabs):
+        self._desc = descriptor
+        self._fSlab = fixedSlabs
+        self._eSlab = energySlabs
+
+    def __repr__(self):
+        return self._desc
+
+    def promptAndCalc(self):
+
+        units = promptInt("Please enter number of units: ")
+
+        f = promptFromList([i[0] for i in self._fSlab])
+
+        cost = calcESlab(units, self._eSlab)
+
+        cost += self._fSlab[f]
+
+        return cost
+
+
+class KWCat(BasicCat):
+    def promptAndCalc(self):
+
+        units = promptInt("Please enter number of units this month: ")
+        kw = promptInt(f"Please enter number of KW this month(0-{max(self._fSlab)}): ", range(max(self._fSlab)))
+
+        cost = calcESlab(units, self._eSlab)
+
+        e = -1
+        for i in self._fSlab:
+            if kw < i:
+                e = i
+                break
+
+        cost += self._fSlab[e] * kw
+
+        return cost
+
+
+class ContractCat(KWCat):
+    def __init__(self, descriptor, energySlabs, demandSlabs):
+        self._dSlab = demandSlabs
+        super().__init__(descriptor, energySlabs, {})
+
+    def promptAndCalc(self):
+        contract = promptInt("Contract Demand(KW): ")
+        self._fSlab = {}
+        self._fSlab[contract] = self._dSlab[0]
+        self._fSlab[999] = self._dSlab[1]
+
+        return super().promptAndCalc()
+
+
+class MinCat(BasicCat):
+    def __init__(self, descriptor, energySlabs, costPerBHP):
+        self._cBHP = costPerBHP
+        super().__init__(descriptor, energySlabs, [["Flat", 0]])
+
+    def promptAndCalc(self):
+        bhp = promptInt("BHP: ")
+
+        cost = super().promptAndCalc()
+        if cost < bhp * self._cBHP:
+            cost = bhp * self._cBHP
+
+        return cost
+
+
+class DailyCat(BasicCat):
+    def promptAndCalc(self):
+
+        days = promptInt("Please enter the number of days: ")
+
+        units = promptInt("Please enter number of units: ")
+
+        kw = promptInt("Please enter number of KW this month: ")
+
+        cost = calcESlab(units, self._eSlab)
+
+        cost += self._fSlab[0] * days * kw
+
+        return cost
+
+
+# 15 in total
+RGP = BasicCat("RGP: Residential General Purpose",
+               {50: 3.20, 150: 3.95, 999: 5},
+               [["Single Phase", 25], ["Three Phase", 65]])
+
+BPL = BasicCat("BPL : Below Poverty Line",
+               {50: 1.50, 150: 3.95, 999: 5},
+               [["Flat", 5]])
+
+# installation might mess it up
+# TODO: this later
+# nvm, RGP and BPL also have this, might need to change BasicCat
+GLP = BasicCat("GLP : General Lighting Purpose",
+               {200: 4.10, 999: 4.80},
+               [["Single Phase", 30], ["Three Phase", 70]])
+
+Non_RGP = KWCat("Non-RGP : Low Tension Service for Commercial and Industrial Purpose",
+                {999: 4.60},
+                {5: 70, 15: 90})
+
+LTP = MinCat("LTP (AG) : Agriculture Service",
+             {999: 340}, 10)
+
+SL = BasicCat("SL : Low Tension Tension Street Light Service",
+              {999: 4.30},
+              [["Flat", 0]])
+
+LEV = BasicCat("LEV : LT- Electric Vehicle Charging Stations",
+               {999: 4.20},
+               [["Flat", 25]])
+
+TMP = DailyCat("TMP : Low Tension Temporary Supply",
+               {999: 5.20}, [25])
+
+EV = ContractCat("EV: HT- Electric Vehicle Charging Stations",
+                 {999: 4.10},
+                 [25, 50])
+
+
+powercats = [RGP, BPL, GLP, Non_RGP, LTP, SL, LEV, EV]
+
+if __name__ == "__main__":
+    op = promptFromList(powercats)
+    print(powercats[op].promptAndCalc())
