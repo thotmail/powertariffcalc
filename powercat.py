@@ -92,6 +92,14 @@ class CostMul(CostOP):
 class CostPerUnit(Cost):
 
     def __init__(self, costbrackets, unitName="units"):
+        """ Cost depends on quantity of single variable, cost format of:
+            cost = v1 for the first k1 of x
+            cost = v2 for the rest
+            written as CostPerUnit({k1:v1, theRest:v2}, x)
+        Args:
+            costbrackets (dict): keys representing quantity, values represent cost
+            unitName (str, optional): name of the variable that cost depends on. Defaults to "units".
+        """
         self._brackets = costbrackets
         self._unitName = unitName
 
@@ -127,9 +135,15 @@ class CostPerUnit(Cost):
 # if you have a, cost is 1,
 # if you have b, cost is 2,
 # translates to:
-# CostPerUnit([ [a, 1], [b, 2]] ])
+# CostPerUnit([ [a, 1], [b, 2] ])
 class CostPerChoice(Cost):
     def __init__(self, choices, unitName="choices"):
+        """When Cost is based on distinct catagories
+
+        Args:
+            choices (list): list containing lists of length 2, 0: catagory, 1: cost associated with the catagory
+            unitName (str, optional): name of the variable that cost depends on. Defaults to "choices".
+        """
         self._choices = choices
         self._unitName = unitName
 
@@ -147,6 +161,11 @@ class CostPerChoice(Cost):
 # CostFlat(x)
 class CostFlat(Cost):
     def __init__(self, flat):
+        """When theres is a cost that doesnt depend on variables
+
+        Args:
+            flat (int): the cost
+        """
         self._f = flat
 
     def requiredIns(self):
@@ -172,6 +191,14 @@ class CostFlat(Cost):
 class CostPerUnitContract(CostPerUnit):
     def __init__(self, costbrackets, contractName="contract demand kW",
                  unitName="kW"):
+        """When theres a contract on what the max should be, see CostPerUnit
+        key = -1 for cost above contract
+
+        Args:
+            costbrackets (dict): keys representing quantity, values represent cost
+            contractName (str, optional): name of variable representing contract max amount. Defaults to "contract demand kW".
+            unitName (str, optional): name of the variable that cost depends on. Defaults to "kW".
+        """
         super().__init__(costbrackets, unitName)
         self._cName = contractName
 
@@ -191,9 +218,19 @@ class CostPerUnitContract(CostPerUnit):
 # if y <= a, cost is 1 per x,
 # if y > a, cost is 2 per x
 # translates to:
-# CostPerUnit({a: 1, thRest: 2})
+# CostPerUnitConditional({a: 1, thRest: 2})
 class CostPerUnitConditional(CostPerUnit):
     def __init__(self, costbrackets, conditionalName="kW", unitName="units"):
+        """When cost per x depends on y:
+        if x <= k1, cost is v1 per y
+        if x <= k2, cost is v2 per y
+        if x > k2, cost is v3 per y
+        CostPerUnitConditional({k1: v1, k2: v2, thRest: v3}, x, y)
+        Args:
+            costbrackets (dict): keys representing quantity, values represent cost
+            conditionalName (str, optional): the y that cost per x depends on. Defaults to "kW".
+            unitName (str, optional): the x in cost pre x. Defaults to "units".
+        """
         super().__init__(costbrackets, unitName)
         self._cName = conditionalName
 
@@ -222,6 +259,12 @@ class CostPerUnitConditional(CostPerUnit):
 #           2 - cost of dec below 90
 class CostPowerFactor(Cost):
     def __init__(self, costbrackets, unitName="power factor"):
+        """extreamly specific
+
+        Args:
+            costbrackets (list): length of 3, 0: cost of imp 90 to 95, 1: cost of imp above 95, 2: cost of dec below 90
+            unitName (str, optional): name of the variable that cost depends on. Defaults to "power factor".
+        """
         self._brackets = costbrackets
         self._unitName = unitName
 
@@ -353,5 +396,5 @@ HTDM = BasicCat("HTMD - Metro Traction",
                  * CostPerUnit({theRest: 1}))
                 )
 
-powercats = [RGP, BPL, GLP, NonRGP, LTP, LTMD_1, LTMD_2, SL, LEV,
-             TMP, HTDM_1, HTDM_2, HTDM_3, EV, HTDM]
+powercats = (RGP, BPL, GLP, NonRGP, LTP, LTMD_1, LTMD_2, SL, LEV,
+             TMP, HTDM_1, HTDM_2, HTDM_3, EV, HTDM)
